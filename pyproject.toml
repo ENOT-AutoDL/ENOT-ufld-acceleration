@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 120
+target-version = ["py38", "py39"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 120
+ensure_newline_before_comments = true
+force_single_line = true
+
+[tool.docformatter]
+recursive = true
+wrap-summaries = 0
+wrap-descriptions = 0
+blank = true
+black = true
+pre-summary-newline = true
+
+[tool.pyupgrade]
+py38plus = true

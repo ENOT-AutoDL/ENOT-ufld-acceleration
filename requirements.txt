@@ -1,0 +1,11 @@
+addict
+enot-autodl==3.3.2
+enot-latency-server==1.2.0
+imagesize
+onnxruntime-gpu
+opencv-python
+pathspec
+scikit-learn
+tensorboard
+tqdm
+ujson
