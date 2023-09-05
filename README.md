@@ -78,7 +78,7 @@ If you want to use your own path for dataset, change `data_root` parameter in `c
 To train baseline model, run:
 
 ```bash
-bash commands/baseline/train_baseline.sh
+bash commands/baseline/train.sh
 ```
 
 The result of this command is the `model_best.pth` checkpoint in the `runs/baseline` directory.
@@ -86,7 +86,7 @@ The result of this command is the `model_best.pth` checkpoint in the `runs/basel
 Use this command to verify baseline accuracy:
 
 ```bash
-bash commands/baseline/test_baseline.sh
+bash commands/baseline/test.sh
 ```
 
 ## Model optimization (Jetson)
@@ -100,17 +100,25 @@ To optimize a model by latency for Jetson, run our latency server on Jetson (see
 To optimize a model by latency for Jetson, run the corresponding script (x2/x3 means latency acceleration):
 
 ```bash
-bash commands/x2_jetson/prune_x2.sh
-bash commands/x3_jetson/prune_x3.sh
+bash commands/x2_jetson/prune.sh
+bash commands/x3_jetson/prune.sh
 ```
 
-### Tune
+### Model tuning
 
 After pruning, the model should be tuned with the following command:
 
 ```bash
-bash commands/x2_jetson/tune_x2.sh
-bash commands/x3_jetson/tune_x3.sh
+bash commands/x2_jetson/tune.sh
+bash commands/x3_jetson/tune.sh
+```
+
+### Quantization
+
+To use INT8 data type for model inference, follow our quantization pipeline:
+
+```bash
+bash commands/x3_jetson/quant.sh
 ```
 
 ### Accuracy and latency verification
@@ -118,8 +126,8 @@ bash commands/x3_jetson/tune_x3.sh
 Use this command to verify the optimized model accuracy:
 
 ```bash
-bash commands/x2_jetson/test_x2.sh
-bash commands/x3_jetson/test_x3.sh
+bash commands/x2_jetson/test.sh
+bash commands/x3_jetson/test.sh
 ```
 
 Use this command to verify the optimized model latency:
@@ -131,7 +139,7 @@ bash commands/x3_jetson/measure.sh
 
 ### Our optimization results
 
-Download our checkpoints from [Google Drive](https://drive.google.com/file/d/1wxK4UcTS-5Y2yUt2oOJR2ubyfzJiJ7uc/view?usp=sharing).
+Download our checkpoints from [Google Drive](https://drive.google.com/file/d/1uDzWVkCwWnY5XZ8CH80b0vGVxRSmDU9G/view?usp=sharing).
 
 To extract `checkpoints` use the following command:
 
@@ -148,11 +156,14 @@ python test.py configs/tusimple_res18.py --model_ckpt checkpoints/x3_jetson/mode
 ```
 
 To check metrics on ONNX run:
+
 ```bash
 python test.py configs/tusimple_res18.py --onnx_path checkpoints/baseline/model_best.onnx --batch_size 1
 python test.py configs/tusimple_res18.py --onnx_path checkpoints/x2_jetson/model_best.onnx --batch_size 1
 python test.py configs/tusimple_res18.py --onnx_path checkpoints/x3_jetson/model_best.onnx --batch_size 1
 ```
+
+> **_NOTE:_** We recommend to check metric for `quantized_model.onnx` on a target device (see our instruction in [Validation on Jetson AGX Orin device](#validation-on-jetson-agx-orin-device))
 
 To check their latency, run the following commands:
 
@@ -160,6 +171,52 @@ To check their latency, run the following commands:
 python measure.py --model_ckpt checkpoints/baseline/model_best.pth --host <jetson-server-host> --port 15003
 python measure.py --model_ckpt checkpoints/x2_jetson/model_best.pth --host <jetson-server-host> --port 15003
 python measure.py --model_ckpt checkpoints/x3_jetson/model_best.pth --host <jetson-server-host> --port 15003
+python measure.py --onnx checkpoints/x3_jetson/quantized_model.onnx --host <jetson-server-host> --port 15003
+```
+
+### Validation on Jetson AGX Orin device
+
+To make sure that your model accuracy is not affected by computations in FP16 or INT8 on Jetson device, follow this validation pipeline:
+
+⚠️ On PC where you run scripts from this repository:
+
+1. Create a dataset in the pickle format:
+
+   ```bash
+   python pickle_dataset.py configs/tusimple_res18.py --pickle_data_path pickle_data
+   ```
+
+1. Send an ONNX model, `pickle_data`, and `inference_on_device.py` to the Jetson device using `scp`:
+
+   ```bash
+   scp -P <jetson-port> -r path/to/model.onnx pickle_data inference_on_device.py <user-name>@<jetson-host>:/your/location/
+   ```
+
+⚠️ On Jetson device:
+
+1. Install OnnxRuntime package with TensorRT backend using the following commands:
+
+   ```bash
+   wget https://nvidia.box.com/shared/static/mvdcltm9ewdy2d5nurkiqorofz1s53ww.whl -O onnxruntime_gpu-1.15.1-cp38-cp38-linux_aarch64.whl
+   pip3 install onnxruntime_gpu-1.15.1-cp38-cp38-linux_aarch64.whl
+   ```
+
+1. Run inference on the pickled dataset from the directory with previously copied model ONNX, `pickle_data`, and `inference_on_device.py`:
+
+   ```bash
+   python3 inference_on_device.py -m your/model.onnx -i pickle_data -o out_pickle --device jetson
+   ```
+
+1. Send the resulting `out_pickle` directory to your PC to the `ultra-fast-lane-detector-v2` repository root using `scp`:
+
+   ```bash
+   scp -P <pc-port> -r out_pickle <user-name>@<pc-host>:/path/to/ultra-fast-lane-detector-v2/
+   ```
+
+⚠️ On PC where you run scripts from this repository:
+
+```bash
+python test_on_pickles.py configs/tusimple_res18.py --batch_size 1 --pickled_inference_results out_pickle
 ```
 
 ## Model optimization (TI)
@@ -176,15 +233,15 @@ Use our [instruction](https://github.com/ENOT-AutoDL/latency-server-ti-tda4-j721
 To optimize a model by latency for TI, run the corresponding script (x4 means latency acceleration):
 
 ```bash
-bash commands/x4_ti/prune_x4.sh
+bash commands/x4_ti/prune.sh
 ```
 
-### Tune
+### Model tuning
 
 After pruning, the model should be tuned with the following command:
 
 ```bash
-bash commands/x4_ti/tune_x4.sh
+bash commands/x4_ti/tune.sh
 ```
 
 ### Accuracy and latency verification
@@ -192,7 +249,7 @@ bash commands/x4_ti/tune_x4.sh
 Use this command to verify the optimized model accuracy:
 
 ```bash
-bash commands/x4_ti/test_x4.sh
+bash commands/x4_ti/test.sh
 ```
 
 Use this command to verify the optimized model latency:
@@ -203,7 +260,7 @@ bash commands/x4_ti/measure.sh
 
 ### Our optimization results
 
-Download our checkpoints from [Google Drive](https://drive.google.com/file/d/1wxK4UcTS-5Y2yUt2oOJR2ubyfzJiJ7uc/view?usp=sharing).
+Download our checkpoints from [Google Drive](https://drive.google.com/file/d/1uDzWVkCwWnY5XZ8CH80b0vGVxRSmDU9G/view?usp=sharing).
 
 To extract `checkpoints` use the following command:
 
@@ -222,6 +279,7 @@ python test.py configs/tusimple_res18.py --model_ckpt checkpoints/x4_ti/model_be
 > **_NOTE:_** Model `checkpoints/x3_ti/model_best.pth` was obtained on Jetson (`checkpoints/x2_jetson/model_best.pth`) and has x3 acceleration on TI device.
 
 To check metrics on ONNX run:
+
 ```bash
 python test.py configs/tusimple_res18.py --onnx_path checkpoints/baseline/model_best.onnx --batch_size 1
 python test.py configs/tusimple_res18.py --onnx_path checkpoints/x3_ti/model_best.onnx --batch_size 1
@@ -261,18 +319,18 @@ To make sure that your model accuracy is not affected by computations in FX8, fo
 
    > **_NOTE:_** It takes more about 60 min to calibrate and compile the baseline model on our x86_PC.
 
-1. Send `compiled_artifacts`, `pickle_data`, and `inference_on_ti.py` to the TI device using `scp`:
+1. Send `compiled_artifacts`, `pickle_data`, and `inference_on_device.py` to the TI device using `scp`:
 
    ```bash
-   scp -P <ti-port> -r compiled_artifacts pickle_data inference_on_ti.py <user-name>@<ti-host>:/your/location/
+   scp -P <ti-port> -r compiled_artifacts pickle_data inference_on_device.py <user-name>@<ti-host>:/your/location/
    ```
 
 ⚠️ On TI device:
 
-1. Run inference on pickled dataset from the directory with previously copied `compiled_artifacts`, `pickle_data`, and `inference_on_ti.py`:
+1. Run inference on the pickled dataset from the directory with previously copied `compiled_artifacts`, `pickle_data`, and `inference_on_device.py`:
 
    ```bash
-   TIDL_TOOLS_PATH=/opt/latency_server/tidl_tools python3 inference_on_ti.py -m compiled_artifacts -i pickle_data -o out_pickle
+   TIDL_TOOLS_PATH=/opt/latency_server/tidl_tools python3 inference_on_device.py -m compiled_artifacts -i pickle_data -o out_pickle --device ti
    ```
 
 1. Send the resulting `out_pickle` directory to your PC to the `ultra-fast-lane-detector-v2` repository root using `scp`:
@@ -284,5 +342,5 @@ To make sure that your model accuracy is not affected by computations in FX8, fo
 ⚠️ On PC where you run scripts from this repository:
 
 ```bash
-python test_on_ti_data.py configs/tusimple_res18.py --batch_size 1 --ti_inference_results out_pickle
+python test_on_pickles.py configs/tusimple_res18.py --batch_size 1 --pickled_inference_results out_pickle
 ```

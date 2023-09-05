@@ -18,7 +18,6 @@ from evaluation.eval_wrapper import eval_lane
 from export import TiCompatibleClsLinear
 from utils.common import calc_loss
 from utils.common import get_logger
-from utils.common import get_model
 from utils.common import get_train_loader
 from utils.common import get_work_dir
 from utils.common import inference
