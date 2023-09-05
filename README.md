@@ -144,7 +144,7 @@ Download our checkpoints from [Google Drive](https://drive.google.com/file/d/1uD
 To extract `checkpoints` use the following command:
 
 ```bash
-unzip ufld_ckpt_with_onnx.zip
+unzip ufld_ckpt_with_onnx_quant.zip
 ```
 
 To check their metrics, run with the following commands:
@@ -265,7 +265,7 @@ Download our checkpoints from [Google Drive](https://drive.google.com/file/d/1uD
 To extract `checkpoints` use the following command:
 
 ```bash
-unzip ufld_ckpt_with_onnx.zip
+unzip ufld_ckpt_with_onnx_quant.zip
 ```
 
 To check their metrics, run with the following commands:
