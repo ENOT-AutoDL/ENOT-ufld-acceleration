@@ -15,6 +15,6 @@ if __name__ == "__main__":
     if not os.path.exists(cfg.test_work_dir):
         os.mkdir(cfg.test_work_dir)
 
-    print(f"Start validation using pickles from {args.ti_inference_results}...")
+    print(f"Start validation using pickles from {args.pickled_inference_results}...")
 
-    eval_on_pickles(args.ti_inference_results, cfg)
+    eval_on_pickles(args.pickled_inference_results, cfg)

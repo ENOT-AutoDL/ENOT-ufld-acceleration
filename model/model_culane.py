@@ -41,12 +41,6 @@ class parsingNet(torch.nn.Module):
 
         self.model = resnet(backbone, pretrained=pretrained)
 
-        # for avg pool experiment
-        # self.pool = torch.nn.AdaptiveAvgPool2d(1)
-        # self.pool = torch.nn.AdaptiveMaxPool2d(1)
-
-        # self.register_buffer('coord', torch.stack([torch.linspace(0.5,9.5,10).view(-1,1).repeat(1,50), torch.linspace(0.5,49.5,50).repeat(10,1)]).view(1,2,10,50))
-
         self.cls = torch.nn.Sequential(
             torch.nn.LayerNorm(self.input_dim) if fc_norm else torch.nn.Identity(),
             torch.nn.Linear(self.input_dim, mlp_mid_dim),
@@ -57,22 +51,27 @@ class parsingNet(torch.nn.Module):
         if self.use_aux:
             self.seg_head = SegHead(backbone, num_lane_on_row + num_lane_on_col)
         initialize_weights(self.cls)
+        self._without_reshape = False
+
+    @property
+    def without_reshape(self):
+        return getattr(self, "_without_reshape", False)
+
+    @without_reshape.setter
+    def without_reshape(self, value: bool):
+        setattr(self, "_without_reshape", value)
 
     def forward(self, x):
         x2, x3, fea = self.model(x)
         if self.use_aux:
             seg_out = self.seg_head(x2, x3, fea)
         fea = self.pool(fea)
-        # print(fea.shape)
-        # print(self.coord.shape)
-        # fea = torch.cat([fea, self.coord.repeat(fea.shape[0],1,1,1)], dim = 1)
 
         fea = fea.view(-1, self.input_dim)
         out = self.cls(fea)
 
-        if torch.onnx.is_in_onnx_export():
+        if torch.onnx.is_in_onnx_export() or self.without_reshape:
             return out
-        # print(f'dim1: {self.dim1}, dim2: {self.dim2}, dim3: {self.dim3}, dim4: {self.dim4}, num_grid_row: {self.num_grid_row}, num_cls_row: {self.num_cls_row}, num_lane_on_row: {self.num_lane_on_row}, num_grid_col: {self.num_grid_col}, num_cls_col: {self.num_cls_col}, num_lane_on_col: {self.num_lane_on_col}, ')
         else:
             pred_dict = {
                 "loc_row": out[:, : self.dim1].view(-1, self.num_grid_row, self.num_cls_row, self.num_lane_on_row),

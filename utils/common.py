@@ -155,18 +155,18 @@ def get_args():
     # for evaluation on onnx
     parser.add_argument("--onnx_path", default=None, type=str, help="Path to onnx for TensorRT inference.")
 
-    # for validation on pickles on TI device
+    # for validation on pickles
     parser.add_argument(
         "--pickle_data_path",
         type=str,
-        default="./pickles_for_ti",
-        help="Output path for preprocessed dataset in pickle format for inference on TI",
+        default="./pickle_data",
+        help="Output path for preprocessed dataset in pickle format for inference on target device.",
     )
     parser.add_argument(
-        "--ti_inference_results",
-        default=None,
+        "--pickled_inference_results",
         type=str,
-        help="Path to directory with inference results created on TI device.",
+        default="./out_pickle",
+        help="Path to directory with inference results created on target device.",
     )
 
     return parser
@@ -410,6 +410,51 @@ class CallableSession:
     def __call__(self, imgs):
         imgs = imgs.cpu().numpy()
         return self.session.run([self.session.get_outputs()[0].name], {self.session.get_inputs()[0].name: imgs})
+
+
+class ModelWithReshape(torch.nn.Module):
+    def __init__(
+        self,
+        model_without_reshape,
+        num_grid_row=None,
+        num_cls_row=None,
+        num_grid_col=None,
+        num_cls_col=None,
+        num_lane_on_row=None,
+        num_lane_on_col=None,
+        use_aux=False,
+    ):
+        super().__init__()
+        self.num_grid_row = num_grid_row
+        self.num_cls_row = num_cls_row
+        self.num_grid_col = num_grid_col
+        self.num_cls_col = num_cls_col
+        self.num_lane_on_row = num_lane_on_row
+        self.num_lane_on_col = num_lane_on_col
+        self.use_aux = use_aux
+        self.dim1 = self.num_grid_row * self.num_cls_row * self.num_lane_on_row
+        self.dim2 = self.num_grid_col * self.num_cls_col * self.num_lane_on_col
+        self.dim3 = 2 * self.num_cls_row * self.num_lane_on_row
+        self.dim4 = 2 * self.num_cls_col * self.num_lane_on_col
+        self.total_dim = self.dim1 + self.dim2 + self.dim3 + self.dim4
+
+        self.base_model = model_without_reshape
+
+    def forward(self, inputs):
+        out = self.base_model(inputs)
+
+        pred_dict = {
+            "loc_row": out[:, : self.dim1].view(-1, self.num_grid_row, self.num_cls_row, self.num_lane_on_row),
+            "loc_col": out[:, self.dim1 : self.dim1 + self.dim2].view(
+                -1, self.num_grid_col, self.num_cls_col, self.num_lane_on_col
+            ),
+            "exist_row": out[:, self.dim1 + self.dim2 : self.dim1 + self.dim2 + self.dim3].view(
+                -1, 2, self.num_cls_row, self.num_lane_on_row
+            ),
+            "exist_col": out[:, -self.dim4 :].view(-1, 2, self.num_cls_col, self.num_lane_on_col),
+            "out": out,
+        }
+        return pred_dict
 
 
 def inference_culane_tusimple(net, data_label, teacher=None):
