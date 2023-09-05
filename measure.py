@@ -3,6 +3,7 @@ import argparse
 import onnx
 import torch
 from enot_latency_server.client import measure_latency_remote
+from onnxsim import simplify
 
 from prune import measure_latency_on_server
 
@@ -26,6 +27,7 @@ if __name__ == "__main__":
 
     if args.onnx:
         onnx_model = onnx.load(args.onnx)
+        onnx_model, _ = simplify(onnx_model)
         latency = measure_latency_remote(onnx_model.SerializeToString(), host=args.host, port=args.port)
         print(latency)
         exit()
