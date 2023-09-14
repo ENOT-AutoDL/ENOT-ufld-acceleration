@@ -12,10 +12,10 @@ To get started, install `torch==1.13.1` and `torchvision==0.14.1` compatible wit
 
 The repository is based on two main packages:
 
-- [ENOT Framework](https://enot-autodl.rtd.enot.ai/en/v3.3.2/) — a flexible tool for Deep Learning developers which automates neural architecture optimization.
+- [ENOT Framework](https://enot-autodl.rtd.enot.ai/en/v3.3.3/) — a flexible tool for Deep Learning developers which automates neural architecture optimization.
 - [ENOT Latency Server](https://enot-autodl.rtd.enot.ai/en/latest/latency_server.html) — small open-source package that provides simple API for latency measurement on remote device.
 
-Follow [the installation guide](https://enot-autodl.rtd.enot.ai/en/v3.3.2/installation_guide.html) to install `enot-autodl==3.3.2`.
+Follow [the installation guide](https://enot-autodl.rtd.enot.ai/en/v3.3.3/installation_guide.html) to install `enot-autodl==3.3.3`.
 
 To install `enot-latency-server` simply run:
 
