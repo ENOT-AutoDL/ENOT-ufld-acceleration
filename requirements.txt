@@ -1,5 +1,5 @@
 addict
-enot-autodl==3.3.2
+enot-autodl==3.3.3
 enot-latency-server==1.2.0
 imagesize
 onnxruntime-gpu
